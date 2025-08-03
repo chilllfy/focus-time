@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>神经科学专注计时器</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0066ff" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --bg: linear-gradient(135deg, #e8f0ff, #fdfcff);
+      --card: #ffffff;
+      --txt: #222;
+      --accent: #0066ff;
+      --accent-light: #3399ff;
+      --accent-gradient: linear-gradient(135deg, #0066ff, #3399ff);
+      --shadow: 0 8px 30px rgba(0, 102, 255, 0.15);
+      --transition: all 0.3s ease;
+      --success: #00c853;
+      --warning: #ffab00;
+      --info: #0066ff;
+      --beep-color: #ff416c;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    }
+    
+    body {
+      background: var(--bg);
+      color: var(--txt);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+      background-image: radial-gradient(circle at 15% 50%, rgba(0, 102, 255, 0.05) 0%, transparent 25%), 
+                        radial-gradient(circle at 85% 30%, rgba(51, 153, 255, 0.05) 0%, transparent 25%);
+    }
+    
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 480px;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .header h1 {
+      font-size: 2.4rem;
+      font-weight: 700;
+      margin-bottom: 0.8rem;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .header p {
+      color: #666;
+      font-size: 1.1rem;
+      max-width: 500px;
+      line-height: 1.6;
+    }
+    
+    .card {
+      background: var(--card);
+      box-shadow: var(--shadow);
+      border-radius: 24px;
+      padding: 2.5rem;
+      width: 100%;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      transition: var(--transition);
+      border: 1px solid rgba(0, 102, 255, 0.1);
+    }
+    
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 6px;
+      background: var(--accent-gradient);
+      opacity: 0.8;
+    }
+    
+    .status-container {
+      margin-bottom: 1.8rem;
+    }
+    
+    #state {
+      font-weight: 600;
+      font-size: 1.3rem;
+      color: var(--accent);
+      margin-bottom: 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .timer-container {
+      position: relative;
+      margin-bottom: 2.2rem;
+    }
+    
+    #timer {
+      font-size: 4.5rem;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 2px;
+      text-shadow: 0 4px 10px rgba(0, 102, 255, 0.15);
+    }
+    
+    .progress-container {
+      height: 10px;
+      background: rgba(0, 102, 255, 0.1);
+      border-radius: 5px;
+      overflow: hidden;
+      margin: 1.5rem 0 2.5rem;
+    }
+    
+    .progress-bar {
+      height: 100%;
+      background: var(--accent-gradient);
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+    
+    .buttons {
+      display: flex;
+      gap: 0.8rem;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    
+    button {
+      padding: 0.9rem 1.8rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(0, 102, 255, 0.2);
+      min-width: 140px;
+      justify-content: center;
+    }
+    
+    #startBtn {
+      background: var(--accent-gradient);
+      color: #fff;
+    }
+    
+    #pauseBtn, #stopBtn {
+      background: #fff;
+      color: var(--accent);
+      border: 2px solid rgba(0, 102, 255, 0.2);
+    }
+    
+    #pauseBtn:hover, #stopBtn:hover {
+      background: rgba(0, 102, 255, 0.05);
+      transform: translateY(-2px);
+    }
+    
+    #startBtn:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 102, 255, 0.3);
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+    
+    .desc {
+      font-size: 1rem;
+      color: #555;
+      line-height: 1.7;
+      margin-top: 2.2rem;
+      padding: 1.5rem;
+      background: rgba(0, 102, 255, 0.04);
+      border-radius: 16px;
+      text-align: left;
+      position: relative;
+    }
+    
+    .desc::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--accent-gradient);
+      border-radius: 4px 0 0 4px;
+    }
+    
+    .highlight {
+      color: var(--accent);
+      font-weight: 600;
+    }
+    
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.2rem;
+      margin: 2rem 0;
+      width: 100%;
+    }
+    
+    .stat-card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 1.5rem;
+      text-align: center;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+      border: 1px solid rgba(0, 102, 255, 0.08);
+    }
+    
+    .stat-card i {
+      font-size: 2.2rem;
+      color: var(--accent);
+      margin-bottom: 0.8rem;
+    }
+    
+    .stat-card h3 {
+      font-size: 1.1rem;
+      margin-bottom: 0.4rem;
+      color: #333;
+    }
+    
+    .stat-card p {
+      font-size: 0.9rem;
+      color: #666;
+    }
+    
+    .mode-indicator {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    
+    .mode {
+      padding: 0.5rem 1rem;
+      border-radius: 50px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      background: rgba(0, 102, 255, 0.08);
+      color: var(--accent);
+    }
+    
+    .mode.active {
+      background: var(--accent-gradient);
+      color: white;
+    }
+    
+    .notification {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-100px);
+      background: #fff;
+      color: var(--accent);
+      padding: 16px 30px;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      box-shadow: 0 5px 25px rgba(0, 102, 255, 0.2);
+      border-left: 4px solid var(--accent);
+      transition: transform 0.4s ease;
+    }
+    
+    .notification.show {
+      transform: translateX(-50%) translateY(0);
+    }
+    
+    .audio-info {
+      background: rgba(0, 102, 255, 0.08);
+      border-radius: 12px;
+      padding: 12px 15px;
+      margin-top: 10px;
+      font-size: 0.9rem;
+      color: #666;
+      text-align: center;
+    }
+    
+    .beep-indicator {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 15px 0;
+    }
+    
+    .beep-dot {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #ddd;
+      transition: all 0.3s ease;
+    }
+    
+    .beep-dot.active {
+      background: var(--beep-color);
+      transform: scale(1.5);
+      box-shadow: 0 0 10px rgba(255, 65, 108, 0.5);
+    }
+    
+    footer {
+      margin-top: 2.5rem;
+      text-align: center;
+      color: #666;
+      font-size: 0.9rem;
+      width: 100%;
+      max-width: 480px;
+    }
+    
+    @media (max-width: 600px) {
+      .card {
+        padding: 1.8rem;
+      }
+      
+      #timer {
+        font-size: 3.5rem;
+      }
+      
+      .buttons {
+        flex-direction: column;
+      }
+      
+      button {
+        width: 100%;
+      }
+      
+      .stats {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    
+    @keyframes beep-pulse {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 65, 108, 0.7); }
+      70% { transform: scale(1.3); box-shadow: 0 0 0 15px rgba(255, 65, 108, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 65, 108, 0); }
+    }
+    
+    .pulse {
+      animation: pulse 1.5s infinite;
+    }
+    
+    .beep-pulse {
+      animation: beep-pulse 0.5s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><i class="fas fa-brain"></i> 神经科学专注计时器</h1>
+      <p>基于神经重放理论与变比率强化机制的高效专注工具</p>
+    </div>
+    
+    <div class="stats">
+      <div class="stat-card">
+        <i class="fas fa-clock"></i>
+        <h3>90分钟专注</h3>
+        <p>科学证明的最佳专注时长</p>
+      </div>
+      <div class="stat-card">
+        <i class="fas fa-random"></i>
+        <h3>随机提示音</h3>
+        <p>3-5分钟随机间隔提醒</p>
+      </div>
+      <div class="stat-card">
+        <i class="fas fa-battery-full"></i>
+        <h3>150%记忆力</h3>
+        <p>神经重放提升记忆效率</p>
+      </div>
+      <div class="stat-card">
+        <i class="fas fa-chart-line"></i>
+        <h3>进入心流</h3>
+        <p>变比率强化提升专注度</p>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="status-container">
+        <div id="state"><i class="fas fa-pause-circle"></i> 等待开始</div>
+        <div class="mode-indicator">
+          <div class="mode" id="focusMode">专注模式</div>
+          <div class="mode" id="restMode">休息模式</div>
+          <div class="mode" id="eyeMode">闭眼休息</div>
+        </div>
+      </div>
+      
+      <div class="timer-container">
+        <div id="timer">90:00</div>
+        <div class="beep-indicator">
+          <div class="beep-dot" id="beepDot1"></div>
+          <div class="beep-dot" id="beepDot2"></div>
+        </div>
+      </div>
+      
+      <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      
+      <div class="buttons">
+        <button id="startBtn"><i class="fas fa-play"></i> 开始专注</button>
+        <button id="pauseBtn" disabled><i class="fas fa-pause"></i> 暂停</button>
+        <button id="stopBtn" disabled><i class="fas fa-stop"></i> 停止</button>
+      </div>
+      
+      <div class="desc">
+        本工具结合<span class="highlight">神经重放理论</span>与<span class="highlight">变比率强化机制</span>：
+        在专注阶段随机响铃引导闭眼休息 10 秒，以促进快速神经重播；
+        每 90 分钟后自动休息 20 分钟，助力长期效率与记忆巩固。
+        <div class="audio-info" id="audioStatus">
+          <i class="fas fa-volume-up"></i> 提示音模式: 双音提示(beep+0.5s+beep)
+        </div>
+      </div>
+    </div>
+    
+    <div class="notification" id="notification">
+      <i class="fas fa-bell"></i>
+      <span id="notificationText">请闭上眼睛休息10秒钟</span>
+    </div>
+    
+    <footer>
+      <p>© 2023 神经科学专注计时器 | 提升学习效率与记忆力的科学工具</p>
+    </footer>
+  </div>
+
+  <!-- 使用本地音频文件 -->
+  <audio id="ding" preload="auto">
+    <source src="beep.mp3" type="audio/mpeg">
+    <source src="beep.wav" type="audio/wav">
+    您的浏览器不支持音频元素。
+  </audio>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const stateEl = $('state');
+    const timerEl = $('timer');
+    const startBtn = $('startBtn');
+    const pauseBtn = $('pauseBtn');
+    const stopBtn  = $('stopBtn');
+    const ding     = $('ding');
+    const progressBar = $('progressBar');
+    const notification = $('notification');
+    const notificationText = $('notificationText');
+    const focusMode = $('focusMode');
+    const restMode = $('restMode');
+    const eyeMode = $('eyeMode');
+    const audioStatus = $('audioStatus');
+    const beepDot1 = $('beepDot1');
+    const beepDot2 = $('beepDot2');
+
+    const FOCUS_SEC = 90 * 60;
+    const REST_SEC  = 20 * 60;
+    const BEEP_MIN  = 3 * 60;
+    const BEEP_MAX  = 5 * 60;
+    const EYE_SEC   = 10;
+    const BEEP_INTERVAL = 500; // 两次提示音之间的间隔，单位毫秒
+
+    let mode = 'idle';
+    let remaining = 0;
+    let paused = false;
+    let timerInt, beepTO;
+    let totalTime = 0;
+    let currentProgress = 0;
+    let audioReady = false;
+
+    // 初始化音频
+    function initAudio() {
+      // 尝试播放空音频以解锁音频上下文
+      try {
+        const audio = new Audio();
+        audio.volume = 0;
+        audio.play().then(() => {
+          audioStatus.innerHTML = '<i class="fas fa-volume-up"></i> 音频状态: 已准备就绪';
+          audioReady = true;
+        }).catch(e => {
+          console.error('音频初始化失败:', e);
+          audioStatus.innerHTML = '<i class="fas fa-volume-mute"></i> 音频状态: 需要用户交互';
+        });
+      } catch (e) {
+        console.error('音频初始化异常:', e);
+        audioStatus.innerHTML = '<i class="fas fa-volume-mute"></i> 音频状态: 初始化失败';
+      }
+    }
+
+    // 更新模式指示器
+    function updateModes() {
+      focusMode.classList.remove('active');
+      restMode.classList.remove('active');
+      eyeMode.classList.remove('active');
+      
+      if (mode === 'focus') focusMode.classList.add('active');
+      else if (mode === 'rest') restMode.classList.add('active');
+      else if (mode === 'eye') eyeMode.classList.add('active');
+    }
+
+    function fmt(t) {
+      const m = String(Math.floor(t / 60)).padStart(2, '0');
+      const s = String(t % 60).padStart(2, '0');
+      return `${m}:${s}`;
+    }
+    
+    function setTimer(t) {
+      timerEl.textContent = fmt(t);
+      
+      // 更新进度条
+      if (totalTime > 0) {
+        currentProgress = ((totalTime - t) / totalTime) * 100;
+        progressBar.style.width = `${currentProgress}%`;
+      }
+    }
+    
+    // 播放单次提示音
+    function playSingleBeep() {
+      if (!audioReady) {
+        console.warn('音频尚未准备就绪');
+        return false;
+      }
+      
+      try {
+        ding.currentTime = 0;
+        ding.play();
+        return true;
+      } catch (e) {
+        console.error('播放提示音失败:', e);
+        return false;
+      }
+    }
+    
+    // 播放两次提示音（beep+0.5s+beep）
+    function playDoubleBeep() {
+      if (!audioReady) {
+        console.warn('音频尚未准备就绪');
+        showNotification('提示音未准备好，请检查音频设置');
+        return;
+      }
+      
+      // 激活第一个提示点
+      beepDot1.classList.add('beep-pulse');
+      playSingleBeep();
+      
+      // 0.5秒后播放第二次提示音
+      setTimeout(() => {
+        // 激活第二个提示点
+        beepDot2.classList.add('beep-pulse');
+        playSingleBeep();
+        
+        // 移除动画效果
+        setTimeout(() => {
+          beepDot1.classList.remove('beep-pulse');
+          beepDot2.classList.remove('beep-pulse');
+        }, 300);
+      }, BEEP_INTERVAL);
+    }
+    
+    function showNotification(text) {
+      notificationText.textContent = text;
+      notification.classList.add('show');
+      
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 3000);
+    }
+
+    function nextPing() {
+      const gap = Math.floor(Math.random() * (BEEP_MAX - BEEP_MIN)) + BEEP_MIN;
+      beepTO = setTimeout(() => {
+        playDoubleBeep();
+        showNotification('提示：请闭上眼睛休息10秒钟');
+        pauseEye();
+      }, gap * 1000);
+    }
+
+    function pauseEye() {
+      if (mode !== 'focus') return;
+      clearInterval(timerInt);
+      clearTimeout(beepTO);
+      mode = 'eye';
+      stateEl.innerHTML = '<i class="fas fa-eye"></i> 闭眼休息 10 秒';
+      totalTime = EYE_SEC;
+      remaining = EYE_SEC;
+      setTimer(remaining);
+      updateModes();
+      
+      timerInt = setInterval(() => {
+        if (paused) return;
+        remaining--;
+        setTimer(remaining);
+        if (remaining <= 0) startFocus();
+      }, 1000);
+    }
+
+    function startFocus() {
+      mode = 'focus';
+      stateEl.innerHTML = '<i class="fas fa-bolt"></i> 专注中…';
+      totalTime = FOCUS_SEC;
+      remaining = FOCUS_SEC;
+      setTimer(remaining);
+      updateModes();
+      
+      nextPing();
+      timerInt = setInterval(() => {
+        if (paused) return;
+        remaining--;
+        setTimer(remaining);
+        if (remaining <= 0) startRest();
+      }, 1000);
+    }
+
+    function startRest() {
+      mode = 'rest';
+      stateEl.innerHTML = '<i class="fas fa-coffee"></i> 休息 20 分钟';
+      totalTime = REST_SEC;
+      remaining = REST_SEC;
+      setTimer(remaining);
+      updateModes();
+      
+      playDoubleBeep();
+      showNotification('专注结束，请休息20分钟');
+      
+      timerInt = setInterval(() => {
+        if (paused) return;
+        remaining--;
+        setTimer(remaining);
+        if (remaining <= 0) startFocus();
+      }, 1000);
+    }
+
+    function startSession() {
+      playDoubleBeep();
+      startFocus();
+      startBtn.disabled = true;
+      pauseBtn.disabled = false;
+      stopBtn.disabled = false;
+      showNotification('专注开始！请集中注意力');
+    }
+
+    function togglePause() {
+      paused = !paused;
+      pauseBtn.innerHTML = paused ? '<i class="fas fa-play"></i> 恢复' : '<i class="fas fa-pause"></i> 暂停';
+      stateEl.innerHTML = paused ? '<i class="fas fa-pause"></i> 已暂停' : 
+        (mode === 'focus' ? '<i class="fas fa-bolt"></i> 专注中…' : 
+        mode === 'rest' ? '<i class="fas fa-coffee"></i> 休息中…' : stateEl.innerHTML);
+    }
+
+    function stopAll() {
+      clearInterval(timerInt);
+      clearTimeout(beepTO);
+      mode = 'idle';
+      paused = false;
+      stateEl.innerHTML = '<i class="fas fa-pause-circle"></i> 已停止';
+      pauseBtn.innerHTML = '<i class="fas fa-pause"></i> 暂停';
+      setTimer(0);
+      startBtn.disabled = false;
+      pauseBtn.disabled = true;
+      stopBtn.disabled  = true;
+      progressBar.style.width = '0%';
+      updateModes();
+      showNotification('专注已停止');
+    }
+
+    // 页面加载完成后初始化
+    window.addEventListener('DOMContentLoaded', () => {
+      // 初始化音频
+      initAudio();
+      
+      // 设置事件监听器
+      startBtn.onclick = startSession;
+      pauseBtn.onclick = togglePause;
+      stopBtn.onclick  = stopAll;
+      
+      // 初始化页面状态
+      updateModes();
+      setTimer(0);
+      
+      // 音频加载状态检查
+      ding.addEventListener('canplaythrough', () => {
+        audioStatus.innerHTML = '<i class="fas fa-volume-up"></i> 音频状态: 已加载';
+        audioReady = true;
+      });
+      
+      ding.addEventListener('error', () => {
+        audioStatus.innerHTML = '<i class="fas fa-volume-mute"></i> 音频状态: 加载失败';
+        audioReady = false;
+      });
+      
+      // 注册 SW
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js');
+      }
+    });
+  </script>
+</body>
+</html>
